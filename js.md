@@ -19,3 +19,74 @@
 
 Можете ли вы привести пример того, как работа с этим изменилась в ES6? #
 ES6 позволяет использовать стрелочные функции, которые используют охватывающую лексическую область видимости. Обычно это удобно, но не позволяет вызывающей стороне управлять контекстом через `.call` или `.apply` - в результате библиотека, такая как `jQuery`, не будет должным образом связывать это в ваших функциях обработчика событий. Таким образом, важно помнить об этом при рефакторинге больших устаревших приложений.
+
+### Расскажите, как работает прототипное наследование.
+
+Это чрезвычайно распространенный вопрос на собеседовании по JavaScript. Все объекты JavaScript имеют свойство `__proto__`, за исключением объектов, созданных с помощью `__Object.create (null) __`, то есть ссылки на другой объект, который называется «прототипом» объекта. При доступе к свойству объекта и если свойство не найдено в этом объекте, движок JavaScript просматривает `__proto__` объекта, `__proto__` и так далее, пока не найдет свойство, определенное в одном из `__proto__`s, или пока оно не будет найдено. Достигает конца цепочки прототипов. Это поведение имитирует классическое наследование, но на самом деле это больше делегирование, чем наследование.
+
+```javascript
+function Parent() {
+  this.name = "Parent";
+}
+
+Parent.prototype.greet = function () {
+  console.log("Hello from " + this.name);
+};
+
+const child = Object.create(Parent.prototype);
+
+child.cry = function () {
+  console.log("waaaaaahhhh!");
+};
+
+child.cry();
+// waaaaaahhhh!
+
+child.greet();
+// hello from Parent
+
+child.constructor;
+// ƒ Parent() {
+//   this.name = 'Parent';
+// }
+
+child.constructor.name;
+// 'Parent'
+```
+
+На заметку:
+
+- `.greet` не определен для дочернего элемента, поэтому движок идет вверх по цепочке прототипов и находит `.greet` в наследуемом от `Parent`.
+- Нам нужно вызвать `Object.create` одним из следующих способов для наследования методов прототипа:
+  - `Object.create (Parent.prototype)`;
+  - Object.create (new Parent(null));
+  - Object.create (objLiteral);
+  - В настоящее время `child.constructor` указывает на Parent:
+
+Если мы хотим исправить это, можно сделать следующее:
+
+```javascript
+function Parent() {
+  this.name = "Parent";
+}
+
+Parent.prototype.greet = function () {
+  console.log("Hello from " + this.name);
+};
+
+function Child() {
+  Parent.call(this);
+  this.name = "Child";
+}
+
+Child.prototype = Object.create(Parent.prototype);
+Child.prototype.constructor = Child;
+
+const child = new Child();
+
+child.greet();
+// hello from Child
+
+child.constructor.name;
+// 'Child'
+```
